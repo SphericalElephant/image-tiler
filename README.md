@@ -9,11 +9,11 @@ This is a one-shoot script so it is not very pretty.
 ## Usage
 
 ```
-image-tiler.sh [-i input.jpg] [-o output_dir] [-p prefix] [-l levels] [-d]
+image-tiler.sh [-i input.jpg] [-o output_dir] [-l levels] [-d]
 ```
 
 ## Example
 
 ```
-image-tiler.sh -i map.jpg -o ./tiles -l 5 -p map_tile_
+image-tiler.sh -i map.jpg -o ./tiles -l 5
 ```
