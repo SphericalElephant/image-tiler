@@ -4,22 +4,27 @@ set -u -o pipefail
 set -E
 
 usage() {
-    echo "Usage: $0 [-i input.jpg] [-o dir] [-p prefix] [-l levels] [-d]" 1>&2
+    echo "Usage: $0 [-i input.jpg] [-o dir] [-l levels] [-d]" 1>&2
     exit 1
 }
 
-output_dir=.;
+output_dir=.
+min_zoom_size=256
+tile_size=256
 
-while getopts ":i:o:w:h:p:l:d" opt; do
+while getopts "i:o:l:dm:t:" opt; do
     case ${opt} in
         d) set -x ;;
         i) input="$OPTARG" ;;
         l) levels="$OPTARG" ;;
         o) output_dir="$OPTARG" ;;
-        p) prefix="$OPTARG" ;;
+        m) min_zoom_size="$OPTARG" ;;
+        t) tile_size="$OPTARG" ;;
         *) usage ;;
     esac
 done
+
+shift "$((OPTIND-1))"
 
 if [ ! -d "$output_dir" ]; then
     echo "Output directory ${output_dir} does not exist." 1>&2
@@ -35,52 +40,18 @@ function get_dimensions() {
 
 function create_tiles() {
     local input="$1"
-    local output_dir="$2"
-    local tile_width=256
-    local tile_height=256
+    local level="$2"
+    local output_dir_lvl="${output_dir}/${level}"
+    local level_size=$(( $min_zoom_size * (2**$level) ))
 
-    convert -crop "${tile_width}x${tile_height}" +repage "$input" "${output_dir}/tile_%d.${extension}"
-}
-
-function rename_tiles() {
-    local output_dir="$1"
-    local tiles=$(ls "${output_dir}/" | wc -l)
-    local row=0
-    local column=0
-    local width="$2"
-    local tiles_per_column=$(($width/256))
-
-    for tile in $(seq 0 $((tiles-1))); do
-        local filename="${output_dir}/tile_${tile}.${extension}"
-        local target="${output_dir}/${prefix}${column}_${row}.${extension}"
-        mv "${filename}" "${target}"
-
-        (( column++ ))
-
-        if [ "$column" -gt "$tiles_per_column" ]; then
-            column=0
-            (( row++ ))
-        fi 
-    done
-}
-
-
-min_level=$((20-$levels))
-level_list=$(eval echo {20..$min_level})
-
-for level in ${level_list} ; do
-    output_dir_lvl="${output_dir}/${level}"
     mkdir -p "$output_dir_lvl"
+    convert "$input" \
+        -resize ${level_size}x${level_size} \
+        -crop ${tile_size}x${tile_size} \
+        -set filename:tile \
+        ${output_dir_lvl}/%[fx:page.x/${tile_size}]-%[fx:page.y/${tile_size}] %[filename:tile].${extension}
+}
 
-    current_image="${output_dir}/level_${level}.${extension}"
-
-    if [[ $level -eq 20 ]]; then
-        cp "$input" "$current_image"
-    else
-        convert "${output_dir}/level_$((level+1)).${extension}" -resize 50% "$output_dir/level_${level}.${extension}"
-    fi
-
-    create_tiles "${current_image}" "$output_dir_lvl"
-    width=($(get_dimensions "$current_image"))
-    rename_tiles "${output_dir_lvl}" "$width"
+for level in $(eval echo {0..$levels}) ; do
+    create_tiles "$input" "$level"
 done
