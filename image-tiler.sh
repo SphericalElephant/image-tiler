@@ -43,9 +43,9 @@ echo "Creating tiles"
 vips dzsave "$input" "$output_dir" --suffix "$suffix" --tile-size "$tile_size" --layout google
 
 echo "Optimizing pngs with optipng"
-_get_new_pngs | parallel 'optipng -quiet -o7 "{}"'
+_get_new_pngs | parallel -X 'optipng -quiet -o7 "{}"'
 
 echo "Optimizing pngs with advdef"
-_get_new_pngs | parallel 'advdef --shrink-extra -z "{}"'
+_get_new_pngs | parallel -X 'advdef --quiet --shrink-extra -z "{}"'
 
 echo "Done!"
